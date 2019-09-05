@@ -21,7 +21,7 @@ for param in model.parameters():
 ## Hessians
 
 ```
-autograd_hacks.backprop_hessian(model(data), hess_type='CrossEntropy')
+autograd_hacks.backprop_hess(model(data), hess_type='CrossEntropy')
 autograd_hacks.compute_hess(model)
 print(param.hess)  # print Hessian of param
 ```

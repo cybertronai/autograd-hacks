@@ -196,20 +196,21 @@ def compute_hess(model: nn.Module,) -> None:
 
             if layer.bias is not None:
                 setattr(layer.bias, 'hess', torch.einsum('oni,onj->ij', B, B)/n)
+
         elif layer_type == 'Conv2d':
             Kh, Kw = layer.kernel_size
             di, do = layer.in_channels, layer.out_channels
 
             A = layer.activations.detach()
-            A = torch.nn.functional.unfold(A, (Kh, Kw))  # -> n, Xc * Kh * Kw, Oh * Ow
-            n = A.shape[0]  # batch-size
-            B = torch.stack([Bt.reshape(n, do, -1) for Bt in layer.backprops_list])  # -> o, n, do, Oh*Ow
-            o = B.shape[0]  # output classes (exact Hessian), num_samples (sampled Hessian)
+            A = torch.nn.functional.unfold(A, (Kh, Kw))       # n, di * Kh * Kw, Oh * Ow
+            n = A.shape[0]
+            B = torch.stack([Bt.reshape(n, do, -1) for Bt in layer.backprops_list])  # o, n, do, Oh*Ow
+            o = B.shape[0]
 
-            A = torch.stack([A] * o)   # o, n, di * Kh * Kw, Oh*Ow
-            Jb = torch.einsum('onij,onkj->onik', B, A)  # => o, n, do, di * Kh * Kw
+            A = torch.stack([A] * o)                          # o, n, di * Kh * Kw, Oh*Ow
+            Jb = torch.einsum('onij,onkj->onik', B, A)        # o, n, do, di * Kh * Kw
 
-            Hi = torch.einsum('onij,onkl->nijkl', Jb, Jb)     # => n, do, di*Kh*Kw, do, di*Kh*Kw
+            Hi = torch.einsum('onij,onkl->nijkl', Jb, Jb)     # n, do, di*Kh*Kw, do, di*Kh*Kw
             Jb_bias = torch.einsum('onij->oni', B)
             Hi_bias = torch.einsum('oni,onj->nij', Jb_bias, Jb_bias)
 
