@@ -27,8 +27,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# Supported layer class types
-_supported_layers = ['Linear', 'Conv2d']
+_supported_layers = ['Linear', 'Conv2d']  # Supported layer class types
 _hooks_disabled: bool = False           # work-around for https://github.com/pytorch/pytorch/issues/25723
 _enforce_fresh_backprop: bool = False   # global switch to catch double backprop errors on Hessian computation
 
@@ -61,7 +60,7 @@ def add_hooks(model: nn.Module) -> None:
 
 def remove_hooks(model: nn.Module) -> None:
     """
-    Removes hooks added by add_hooks(model)
+    Remove hooks added by add_hooks(model)
     """
 
     assert model == 0, "not working, remove this after fix to https://github.com/pytorch/pytorch/issues/25723"
@@ -75,8 +74,8 @@ def remove_hooks(model: nn.Module) -> None:
 
 
 def disable_hooks() -> None:
-    """Globally disable all hooks installed by this library. Workaround for 'handle.remove()' not working, see
-    https://github.com/pytorch/pytorch/issues/25723
+    """
+    Globally disable all hooks installed by this library.
     """
 
     global _hooks_disabled
@@ -101,7 +100,7 @@ def _layer_type(layer: nn.Module) -> str:
 
 
 def _capture_activations(layer: nn.Module, input: List[torch.Tensor], output: torch.Tensor):
-    """Forward hook that saves activations (layer inputs) into layer.activations. """
+    """Save activations into layer.activations in forward pass"""
 
     if _hooks_disabled:
         return
@@ -110,10 +109,7 @@ def _capture_activations(layer: nn.Module, input: List[torch.Tensor], output: to
 
 
 def _capture_backprops(layer: nn.Module, _input, output):
-    """Appends all backprops to layer.backprops_list.
-    Using list in order to capture multiple backprop values for a single batch. Use util.clear_backprops(model)
-    to clear all saved values.
-    """
+    """Append backprop to layer.backprops_list in backward pass."""
     global _enforce_fresh_backprop
 
     if _hooks_disabled:
@@ -129,9 +125,7 @@ def _capture_backprops(layer: nn.Module, _input, output):
 
 
 def clear_backprops(model: nn.Module) -> None:
-    """
-    Clear backprops_list on every module in the model
-    """
+    """Delete layer.backprops_list in every layer."""
     for layer in model.modules():
         if hasattr(layer, 'backprops_list'):
             del layer.backprops_list
@@ -139,12 +133,11 @@ def clear_backprops(model: nn.Module) -> None:
 
 def compute_grad1(model: nn.Module, loss_type: str = 'mean') -> None:
     """
-    Computes per-example gradients and saves them under 'grad1' attribute of leaf tensors. Expects that the user
-    has called backprop on the loss tensor before calling this method.
+    Compute per-example gradients and save them under 'param.grad1'. Must be called after loss.backprop()
 
     Args:
         model:
-        loss_type: either "mean" or "sum" depending whether backpropped loss was averaged or summed
+        loss_type: either "mean" or "sum" depending whether backpropped loss was averaged or summed over batch
     """
 
     assert loss_type in ('sum', 'mean')
@@ -179,9 +172,7 @@ def compute_grad1(model: nn.Module, loss_type: str = 'mean') -> None:
 
 
 def compute_hess(model: nn.Module,) -> None:
-    """
-    Compute/save Hessian under hess attribute of each Parameter
-    """
+    """Save Hessian under param.hess for each param in the model"""
 
     for layer in model.modules():
         layer_type = _layer_type(layer)
@@ -229,10 +220,10 @@ def compute_hess(model: nn.Module,) -> None:
 
 def backprop_hess(output: torch.Tensor, hess_type: str) -> None:
     """
-    Call backprop 1 or more times to accumulate values needed for Hessian computation.
+    Call backprop 1 or more times to get values needed for Hessian computation.
 
     Args:
-        output: outputs of neural network before non-linearities are applied (ie, what's passed into CrossEntropy)
+        output: prediction of neural network (ie, input of nn.CrossEntropyLoss())
         hess_type: type of Hessian propagation, "CrossEntropy" results in exact Hessian for CrossEntropy
 
     Returns:
