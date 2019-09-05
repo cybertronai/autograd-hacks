@@ -1,6 +1,6 @@
 # autograd-hacks
 
-Compute quantities on Linear and Conv layers
+Extract useful quantities from PyTorch autograd
 
 ## Per-example gradients
 
