@@ -89,6 +89,11 @@ def test_grad1():
             assert torch.allclose(jacobian(losses, param), param.grad1)
 
 
+def test_hess():
+    subtest_hess_type('CrossEntropy')
+    subtest_hess_type('LeastSquares')
+
+
 def subtest_hess_type(hess_type):
     torch.manual_seed(1)
     model = TinyNet()
@@ -126,11 +131,6 @@ def subtest_hess_type(hess_type):
             hess_autograd = hessian(loss, param)
             hess = param.hess
             assert torch.allclose(hess, hess_autograd.reshape(hess.shape))
-
-
-def test_hess():
-    subtest_hess_type('CrossEntropy')
-    subtest_hess_type('LeastSquares')
 
 
 if __name__ == '__main__':
