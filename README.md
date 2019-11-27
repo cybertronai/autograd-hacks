@@ -14,7 +14,7 @@ autograd_hacks.compute_grad1()
 # param.grad1[i]: gradient with respect to example i
 
 for param in model.parameters():
-  assert(torch.allclose(torch.mean(param.grad1), param.grad))
+  assert(torch.allclose(param.grad1.mean(dim=0), param.grad))
 ```
 
 
