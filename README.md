@@ -7,7 +7,7 @@ Extract useful quantities from PyTorch autograd
 ```
 autograd_hacks.add_hooks(model)
 output = model(data)
-loss_fn(output, targets).backwards()
+loss_fn(output, targets).backward()
 autograd_hacks.compute_grad1()
 
 # param.grad: gradient averaged over the batch
