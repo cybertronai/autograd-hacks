@@ -1,6 +1,8 @@
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import pytest
 
 from . import autograd_hacks
 
@@ -79,22 +81,55 @@ def test_grad1():
     autograd_hacks.disable_hooks()
 
     # Compare values against autograd
-    losses = torch.stack([loss_fn(output[i:i+1], targets[i:i+1]) for i in range(len(data))])
+    losses = torch.stack([loss_fn(output[i:i+1], targets[i:i+1])
+                          for i in range(len(data))])
 
     for layer in model.modules():
         if not autograd_hacks.is_supported(layer):
             continue
+
         for param in layer.parameters():
-            assert torch.allclose(param.grad, param.grad1.mean(dim=0))
-            assert torch.allclose(jacobian(losses, param), param.grad1)
+            assert torch.allclose(param.grad, param.grad1[0].mean(dim=0))
+            assert torch.allclose(jacobian(losses, param), param.grad1[0])
 
 
-def test_hess():
-    subtest_hess_type('CrossEntropy')
-    subtest_hess_type('LeastSquares')
+def test_grad1_for_multiple_passes():
+    torch.manual_seed(42)
+    model = Net()
+    loss_fn = nn.CrossEntropyLoss()
+
+    def get_data(batch_size):
+        return (torch.rand(batch_size, 1, 28, 28),
+                torch.LongTensor(batch_size).random_(0, 10))
+
+    n1 = 4
+    n2 = 10
+
+    autograd_hacks.add_hooks(model)
+
+    data, targets = get_data(n1)
+    output = model(data)
+    loss_fn(output, targets).backward(retain_graph=True)
+    grads = [{n: p.grad.clone() for n, p in model.named_parameters()}]
+    model.zero_grad()
+
+    data, targets = get_data(n2)
+    output = model(data)
+    loss_fn(output, targets).backward(retain_graph=True)
+    grads.append({n: p.grad for n, p in model.named_parameters()})
+
+    autograd_hacks.compute_grad1(model)
+
+    autograd_hacks.disable_hooks()
+
+    for n, p in model.named_parameters():
+        for i, grad in enumerate(grads):
+            assert grad[n].shape == p.grad1[i].shape[1:]
+            assert torch.allclose(grad[n], p.grad1[i].mean(dim=0))
 
 
-def subtest_hess_type(hess_type):
+@pytest.mark.parametrize("hess_type", ['CrossEntropy', 'LeastSquares'])
+def test_hess(hess_type):
     torch.manual_seed(1)
     model = TinyNet()
 
@@ -112,13 +147,15 @@ def subtest_hess_type(hess_type):
     if hess_type == 'LeastSquares':
         targets = torch.rand(output.shape)
         loss_fn = least_squares_loss
-    else:  # hess_type == 'CrossEntropy':
+    elif hess_type == 'CrossEntropy':
         targets = torch.LongTensor(n).random_(0, 10)
         loss_fn = nn.CrossEntropyLoss()
+    else:
+        raise ValueError(f"Unknown hessian type")
 
-    autograd_hacks.backprop_hess(output, hess_type=hess_type)
+    autograd_hacks.backprop_hess(output, hess_type)
     autograd_hacks.clear_backprops(model)
-    autograd_hacks.backprop_hess(output, hess_type=hess_type)
+    autograd_hacks.backprop_hess(output, hess_type)
 
     autograd_hacks.compute_hess(model)
     autograd_hacks.disable_hooks()
@@ -126,13 +163,9 @@ def subtest_hess_type(hess_type):
     for layer in model.modules():
         if not autograd_hacks.is_supported(layer):
             continue
+
         for param in layer.parameters():
             loss = loss_fn(output, targets)
             hess_autograd = hessian(loss, param)
             hess = param.hess
             assert torch.allclose(hess, hess_autograd.reshape(hess.shape))
-
-
-if __name__ == '__main__':
-    test_grad1()
-    test_hess()
