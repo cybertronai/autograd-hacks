@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import autograd_hacks
+from . import autograd_hacks
 
 
 # Lenet-5 from https://github.com/pytorch/examples/blob/master/mnist/main.py
