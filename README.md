@@ -4,7 +4,7 @@ Extract useful quantities from PyTorch autograd
 
 ## Per-example gradients
 
-```
+```python
 autograd_hacks.add_hooks(model)
 output = model(data)
 loss_fn(output, targets).backward()
@@ -17,11 +17,10 @@ for param in model.parameters():
   assert(torch.allclose(param.grad1[0].mean(dim=0), param.grad))
 ```
 
-
 ## Hessians
 (assuming ReLU activations, oherwise produces Gauss-Newton matrix)
 
-```
+```python
 autograd_hacks.backprop_hess(model(data), hess_type='CrossEntropy')
 autograd_hacks.compute_hess(model)
 print(param.hess)  # print Hessian of param
