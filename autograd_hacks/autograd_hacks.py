@@ -154,7 +154,8 @@ def compute_grad1_for_linear(layer, A, B):
 
 def compute_grad1_for_conv2d(layer, A, B):
     n = A.shape[0]
-    A = torch.nn.functional.unfold(A, layer.kernel_size)
+    A = torch.nn.functional.unfold(A, layer.kernel_size, layer.dilation,
+                                   layer.padding, layer.stride)
     B = B.reshape(n, -1, A.shape[-1])
     grad1 = torch.einsum('ijk,ilk->ijl', B, A)
     shape = [n] + list(layer.weight.shape)

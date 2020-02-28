@@ -7,8 +7,27 @@ import pytest
 from . import autograd_hacks
 
 
-# Lenet-5 from https://github.com/pytorch/examples/blob/master/mnist/main.py
+class StriddenNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv1 = nn.Conv2d(1, 20, 5, stride=2, padding=2)
+        self.conv2 = nn.Conv2d(20, 30, 5, stride=2, padding=2)
+        self.fc1_input_size = 7 * 7 * 30
+        self.fc1 = nn.Linear(self.fc1_input_size, 500)
+        self.fc2 = nn.Linear(500, 10)
+
+    def forward(self, x):
+        batch_size = x.shape[0]
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = x.view(batch_size, self.fc1_input_size)
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+        return x
+
+
 class Net(nn.Module):
+    """Lenet-5 from https://github.com/pytorch/examples/blob/master/mnist/main.py"""
     def __init__(self):
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(1, 20, 5, 1)
@@ -27,8 +46,9 @@ class Net(nn.Module):
         return x
 
 
-# Tiny LeNet-5 for Hessian testing
 class TinyNet(nn.Module):
+    """Tiny LeNet-5 for Hessian testing"""
+
     def __init__(self):
         super(TinyNet, self).__init__()
         self.conv1 = nn.Conv2d(1, 2, 2, 1)
@@ -65,7 +85,8 @@ def hessian(y: torch.Tensor, x: torch.Tensor):
     return jacobian(jacobian(y, x, create_graph=True), x)
 
 
-def test_grad1():
+@pytest.mark.parametrize("Net", [Net, TinyNet, StriddenNet])
+def test_grad1(Net):
     torch.manual_seed(1)
     model = Net()
     loss_fn = nn.CrossEntropyLoss()
