@@ -2,5 +2,5 @@
 # > pytorch>=1.0.0,<1.3.2
 # However, be sure all intermediate versions are supported.
 mypy==0.761
+torch==1.3.1
 pytest==5.3.5
-pytorch==1.3.1
