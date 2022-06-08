@@ -19,7 +19,7 @@ for param in model.parameters():
 
 
 ## Hessians
-(assuming ReLU activations, oherwise produces Gauss-Newton matrix)
+(assuming ReLU activations, otherwise produces Gauss-Newton matrix)
 
 ```
 autograd_hacks.backprop_hess(model(data), hess_type='CrossEntropy')
